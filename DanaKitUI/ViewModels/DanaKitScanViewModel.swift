@@ -21,6 +21,8 @@ class DanaKitScanViewModel: ObservableObject {
     @Published var pin1 = ""
     @Published var pin2 = ""
 
+    var showUIKitAlert: (() -> Void)?
+
     private let log = DanaLogger(category: "ScanView")
     private var pumpManager: DanaKitPumpManager?
     private var nextStep: () -> Void
@@ -79,8 +81,14 @@ class DanaKitScanViewModel: ObservableObject {
 
         case let .requestedPincode(message):
             isConnecting = true
-            isPromptingPincode = true
             pinCodePromptError = message
+            
+            if #available(iOS 16.0, *) {
+                self.isPromptingPincode = true
+            } else {
+                self.showUIKitAlert?()
+            }
+
         case .timeout:
             isConnecting = false
             isConnectionError = true
@@ -117,11 +125,21 @@ class DanaKitScanViewModel: ObservableObject {
 
     func processPinPrompt() {
         guard pin1.count == 12, pin2.count == 8 else {
+            print("pin1 length: \(pin1.count), pin2 length: \(pin2.count)")
+            print("pin1: \(pin1)")
+            print("pin2: \(pin2)")
             pinCodePromptError = LocalizedString(
                 "Received invalid pincode lengths. Try again",
                 comment: "Dana-RS v3 pincode prompt error invalid length"
             )
-            isPromptingPincode = true
+            
+            // MARK: - 新增代码: 在 iOS 15.x 上，这里也需要触发 UIKit 弹窗
+            if #available(iOS 16.0, *) {
+                isPromptingPincode = true
+            } else {
+                showUIKitAlert?()
+            }
+            
             return
         }
 
@@ -130,7 +148,13 @@ class DanaKitScanViewModel: ObservableObject {
                 "Received invalid hex strings. Try again",
                 comment: "Dana-RS v3 pincode prompt error invalid hex"
             )
-            isPromptingPincode = true
+            
+            if #available(iOS 16.0, *) {
+                isPromptingPincode = true
+            } else {
+                showUIKitAlert?()
+            }
+
             return
         }
 
@@ -151,7 +175,13 @@ class DanaKitScanViewModel: ObservableObject {
                 "Checksum failed. Try again",
                 comment: "Dana-RS v3 pincode prompt error checksum failed"
             )
-            isPromptingPincode = true
+            
+            if #available(iOS 16.0, *) {
+                isPromptingPincode = true
+            } else {
+                showUIKitAlert?()
+            }
+
             return
         }
 
